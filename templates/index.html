@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anime Face GAN</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0F0F1A;
+      --surface: #1A1A2E;
+      --accent: #E040FB;
+      --accent-dim: #9c27b0;
+      --text: #e8e8f0;
+      --text-muted: #888;
+      --border: #2a2a40;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; }
+
+    /* Header */
+    header { text-align: center; margin-bottom: 2.5rem; }
+    header h1 {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #E040FB, #7c4dff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: .5rem;
+    }
+    header p.subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: .4rem;
+    }
+    header p.meta {
+      font-size: .75rem;
+      color: #555;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    /* Controls */
+    .controls {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .slider-row label { min-width: 130px; font-size: .9rem; color: var(--text-muted); }
+    input[type=range] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+    #n-display {
+      min-width: 2rem;
+      text-align: right;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .btn-row { display: flex; gap: .75rem; }
+    button {
+      flex: 1;
+      padding: .75rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, #E040FB, #7c4dff);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Output */
+    .output-area {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .placeholder {
+      color: var(--text-muted);
+      font-size: .95rem;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #result-img {
+      max-width: 100%;
+      border-radius: 8px;
+      animation: fadeIn .4s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    #stats {
+      margin-top: .75rem;
+      font-size: .8rem;
+      color: var(--text-muted);
+    }
+    #seed-display {
+      margin-top: .4rem;
+      font-size: .75rem;
+      color: #555;
+      font-family: monospace;
+    }
+
+    /* Collapsible sections */
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    summary {
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      font-weight: 600;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+    summary::after { content: '▸'; transition: transform .2s; }
+    details[open] summary::after { transform: rotate(90deg); }
+    .section-body { padding: 0 1.5rem 1.5rem; }
+
+    /* Interpolation */
+    #interp-img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin-top: .75rem;
+      animation: fadeIn .4s ease;
+    }
+    .caption { margin-top: .6rem; font-size: .8rem; color: var(--text-muted); line-height: 1.5; }
+
+    /* Training samples */
+    .epoch-controls {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-bottom: 1rem;
+    }
+    .epoch-controls button { flex: 0 0 auto; padding: .5rem .9rem; font-size: .85rem; }
+    #epoch-label { font-size: .85rem; color: var(--accent); min-width: 80px; text-align: center; }
+    #epoch-img {
+      max-width: 100%;
+      border-radius: 6px;
+      animation: fadeIn .3s ease;
+    }
+    #no-samples { color: var(--text-muted); font-size: .9rem; }
+
+    @media (max-width: 480px) {
+      .slider-row { flex-wrap: wrap; }
+      .btn-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Anime Face GAN</h1>
+    <p class="subtitle">Every face is generated from random noise — none of them exist</p>
+    <p class="meta">DCGAN &nbsp;·&nbsp; 63,000 training images &nbsp;·&nbsp; 64×64 &nbsp;·&nbsp; trained on Azure ML</p>
+  </header>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="slider-row">
+      <label for="n-slider">Number of faces</label>
+      <input id="n-slider" type="range" min="4" max="64" step="4" value="16" />
+      <span id="n-display">16</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="btn-generate">Generate</button>
+      <button class="btn-secondary" id="btn-surprise">Surprise me</button>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="output-area" id="output-area">
+    <p class="placeholder">Click Generate to create anime faces</p>
+  </div>
+  <div id="stats" style="display:none; text-align:center;"></div>
+  <div id="seed-display" style="text-align:center;"></div>
+
+  <!-- Interpolation -->
+  <details>
+    <summary>Latent space interpolation</summary>
+    <div class="section-body">
+      <button class="btn-secondary" id="btn-interp" style="max-width:260px;">Show morphing sequence</button>
+      <div id="interp-area"></div>
+      <p class="caption" id="interp-caption" style="display:none;">
+        The generator smoothly transitions between two random faces through the learned latent space.
+      </p>
+    </div>
+  </details>
+
+  <!-- Training progress -->
+  <details>
+    <summary>Training samples</summary>
+    <div class="section-body">
+      <div id="no-samples" style="display:none;">No training samples found.</div>
+      <div id="epoch-viewer" style="display:none;">
+        <div class="epoch-controls">
+          <button class="btn-secondary" id="btn-prev">◀</button>
+          <span id="epoch-label"></span>
+          <button class="btn-secondary" id="btn-next">▶</button>
+        </div>
+        <img id="epoch-img" src="" alt="Training sample" />
+        <p class="caption">Watch the generator learn — from noise to faces over 100 epochs.</p>
+      </div>
+    </div>
+  </details>
+
+</div>
+
+<script>
+  const slider = document.getElementById('n-slider');
+  const nDisplay = document.getElementById('n-display');
+  const btnGenerate = document.getElementById('btn-generate');
+  const btnSurprise = document.getElementById('btn-surprise');
+  const outputArea = document.getElementById('output-area');
+  const statsEl = document.getElementById('stats');
+  const seedDisplay = document.getElementById('seed-display');
+
+  slider.addEventListener('input', () => { nDisplay.textContent = slider.value; });
+
+  async function generate(seed) {
+    const n = parseInt(slider.value);
+    outputArea.innerHTML = '<div class="spinner"></div>';
+    statsEl.style.display = 'none';
+    seedDisplay.textContent = '';
+    btnGenerate.disabled = true;
+    btnSurprise.disabled = true;
+
+    const t0 = performance.now();
+    try {
+      const body = { n };
+      if (seed !== undefined) body.seed = seed;
+      const res = await fetch('/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const latency = Math.round(performance.now() - t0);
+      if (!res.ok) {
+        const err = await res.json();
+        outputArea.innerHTML = `<p style="color:#f44">Error: ${err.detail}</p>`;
+        return;
+      }
+      const data = await res.json();
+      const img = document.createElement('img');
+      img.id = 'result-img';
+      img.src = 'data:image/png;base64,' + data.image_base64;
+      img.alt = 'Generated anime faces';
+      outputArea.innerHTML = '';
+      outputArea.appendChild(img);
+      statsEl.style.display = 'block';
+      statsEl.textContent = `Generated ${data.n_generated} unique faces in ${latency}ms`;
+      if (seed !== undefined) {
+        seedDisplay.textContent = `seed: ${seed}`;
+      }
+    } catch (e) {
+      outputArea.innerHTML = `<p style="color:#f44">Request failed: ${e.message}</p>`;
+    } finally {
+      btnGenerate.disabled = false;
+      btnSurprise.disabled = false;
+    }
+  }
+
+  btnGenerate.addEventListener('click', () => generate());
+  btnSurprise.addEventListener('click', () => {
+    const seed = Math.floor(Math.random() * 1e9);
+    generate(seed);
+  });
+
+  // Interpolation
+  document.getElementById('btn-interp').addEventListener('click', async () => {
+    const area = document.getElementById('interp-area');
+    const caption = document.getElementById('interp-caption');
+    area.innerHTML = '<div class="spinner" style="margin:1rem auto;"></div>';
+    caption.style.display = 'none';
+    const res = await fetch('/generate/interpolation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ steps: 10 }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      area.innerHTML = `<p style="color:#f44">${err.detail}</p>`;
+      return;
+    }
+    const data = await res.json();
+    area.innerHTML = '';
+    const img = document.createElement('img');
+    img.id = 'interp-img';
+    img.src = 'data:image/png;base64,' + data.image_base64;
+    img.alt = 'Latent space interpolation';
+    area.appendChild(img);
+    caption.style.display = 'block';
+  });
+
+  // Training samples
+  let samples = [];
+  let sampleIdx = 0;
+
+  async function loadSamples() {
+    try {
+      const res = await fetch('/api/samples');
+      samples = await res.json();
+    } catch (e) {
+      samples = [];
+    }
+    const viewer = document.getElementById('epoch-viewer');
+    const none = document.getElementById('no-samples');
+    if (samples.length === 0) {
+      none.style.display = 'block';
+      viewer.style.display = 'none';
+    } else {
+      none.style.display = 'none';
+      viewer.style.display = 'block';
+      sampleIdx = 0;
+      showSample(0);
+    }
+  }
+
+  function showSample(idx) {
+    const s = samples[idx];
+    if (!s) return;
+    const img = document.getElementById('epoch-img');
+    const label = document.getElementById('epoch-label');
+    img.src = s.url;
+    label.textContent = s.epoch === 'final' ? 'Final' : `Epoch ${s.epoch}`;
+    img.style.animation = 'none';
+    void img.offsetWidth;
+    img.style.animation = 'fadeIn .3s ease';
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', () => {
+    sampleIdx = (sampleIdx - 1 + samples.length) % samples.length;
+    showSample(sampleIdx);
+  });
+  document.getElementById('btn-next').addEventListener('click', () => {
+    sampleIdx = (sampleIdx + 1) % samples.length;
+    showSample(sampleIdx);
+  });
+
+  // Load samples when section is opened
+  document.querySelectorAll('details').forEach(d => {
+    d.addEventListener('toggle', () => {
+      if (d.open && d.querySelector('#epoch-viewer')) {
+        loadSamples();
+      }
+    });
+  });
+</script>
+</body>
+</html>

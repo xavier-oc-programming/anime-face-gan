@@ -1,0 +1,34 @@
+title: Anime Face GAN — DCGAN on 63,000 Training Images
+slug: anime-face-gan
+category: ai-ml
+date: 2026-05-DD
+featured: false
+tags: deep-learning, neural-network, computer-vision, azure, deployment, REST-API, docker, CI-CD, jupyter, web-app, generative-ai
+tech_stack: Python, TensorFlow, Keras, DCGAN, NumPy, Matplotlib, Pillow, FastAPI, Uvicorn, Docker, Azure ML Compute Instance, Azure App Service, GitHub Actions, pytest
+repo_url: https://github.com/xavier-oc-programming/anime-face-gan
+live_url: https://anime-face-gan-xoc.azurewebsites.net
+demo_url: https://anime-face-gan-xoc.azurewebsites.net
+short_description: Generates anime faces using a DCGAN trained on 63,000 images. Every face is produced from random noise — none of them exist. Trained on Azure ML Compute Instance. Includes latent space interpolation showing smooth morphing between faces.
+full_description: |
+  A Deep Convolutional GAN trained on 63,000 anime face images at 64x64 pixels. The generator
+  learns to produce anime faces from random noise vectors; the discriminator learns to distinguish
+  real from generated images. Both networks improve through adversarial training until the generator
+  produces convincing faces the discriminator cannot reliably identify as fake.
+
+  The architecture follows the DCGAN paper: transposed convolutions for upsampling in the generator,
+  strided convolutions for downsampling in the discriminator, BatchNormalization throughout,
+  LeakyReLU activations, and Adam with BETA_1=0.5. Training ran on Azure ML Compute Instance —
+  the only project in the portfolio where Azure is used for training rather than just inference
+  deployment.
+
+  The demo includes latent space interpolation: a smooth morphing sequence between two randomly
+  chosen faces that demonstrates the generator has learned a continuous, structured latent space
+  rather than memorising training images.
+
+problem: Proving the GAN architecture claimed in the CV with working portfolio evidence, and demonstrating Azure ML Compute Instance for cloud training — separate from the Azure App Service deployment pattern used across all other projects.
+
+solution: DCGAN with two conv blocks in the discriminator and a symmetric upsampling path in the generator. Trained on Azure ML Compute Instance with subprocess shutdown at training end to control costs. Generator committed to the repository for zero-retraining inference deployment on Azure App Service.
+
+challenges: GAN training instability — mode collapse, discriminator dominance, and oscillating losses are all failure modes addressed by specific architectural choices. The subprocess shutdown line must be removed for local training. The generator.keras file (~50MB) is committed to the repository so inference deployment requires no retraining.
+
+results: TBD — populate after training. Include sample grid at final epoch, gen_loss and disc_loss at convergence, and qualitative assessment of face quality.
