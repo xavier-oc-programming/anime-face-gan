@@ -26,10 +26,16 @@ from config import (
 
 def load_dataset():
     images = []
+    skipped = 0
     paths = list(DATA_DIR.glob('*.jpg')) + list(DATA_DIR.glob('*.png'))
     for p in paths:
-        img = Image.open(p).convert('RGB').resize((IMG_SIZE, IMG_SIZE))
-        images.append(np.array(img, dtype=np.float32))
+        try:
+            img = Image.open(p).convert('RGB').resize((IMG_SIZE, IMG_SIZE))
+            images.append(np.array(img, dtype=np.float32))
+        except Exception:
+            skipped += 1
+    if skipped:
+        print(f'Skipped {skipped} corrupt/unreadable images', flush=True)
     images = np.stack(images)
     # GANs use tanh activation on the generator output, which produces values
     # in [-1, 1]. Normalising input images to the same range is required —
