@@ -15,7 +15,7 @@ from tensorflow.keras.losses import BinaryCrossentropy
 
 from config import (
     BATCH_SIZE, BETA_1, DATA_DIR, EPOCHS, IMG_SHAPE, IMG_SIZE,
-    LATENT_DIM, LEARNING_RATE_D, LEARNING_RATE_G, MODEL_DIR,
+    LABEL_SMOOTHING, LATENT_DIM, LEARNING_RATE_D, LEARNING_RATE_G, MODEL_DIR,
     N_SAMPLES, SAMPLES_DIR, SAVE_INTERVAL,
 )
 
@@ -144,9 +144,11 @@ def generator_loss(cross_entropy, fake_output):
 
 
 def discriminator_loss(cross_entropy, real_output, fake_output):
-    # The discriminator wants to label real images as 1 and fake images as 0.
-    # Discriminator loss is high when it makes mistakes on either.
-    real_loss = cross_entropy(tf.ones_like(real_output), real_output)
+    # Real labels use LABEL_SMOOTHING (0.9) instead of 1.0 — prevents the
+    # discriminator from becoming overconfident, keeping gradients useful for
+    # the generator throughout training.
+    real_labels = tf.ones_like(real_output) * LABEL_SMOOTHING
+    real_loss = cross_entropy(real_labels, real_output)
     fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
     return real_loss + fake_loss
 

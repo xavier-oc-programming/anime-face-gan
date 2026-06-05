@@ -21,7 +21,14 @@ LATENT_DIM = 128
 EPOCHS = 100
 BATCH_SIZE = 128
 LEARNING_RATE_G = 0.0002
-LEARNING_RATE_D = 0.0002
+LEARNING_RATE_D = 0.0001
+# LEARNING_RATE_D is half of LEARNING_RATE_G. The baseline run showed discriminator
+# dominance (D loss → 0, G loss rising to 5) — slowing the discriminator gives
+# the generator more useful gradient signal throughout training.
+
+LABEL_SMOOTHING = 0.9
+# Real labels use 0.9 instead of 1.0. Prevents the discriminator from becoming
+# overconfident on real images, which starves the generator of gradients.
 BETA_1 = 0.5
 # BETA_1=0.5 is the standard Adam momentum for GANs. The default (0.9) causes
 # training instability in GANs because high momentum causes the discriminator

@@ -235,7 +235,10 @@ disc_loss = cross_entropy(ones,  real_output) \
           + cross_entropy(zeros, fake_output)   # discriminator wants correct labels
 ```
 
-**Optimizers:** Adam with `lr=0.0002`, `beta_1=0.5` for both networks.
+**Optimizers:** Adam with `beta_1=0.5`. Generator: `lr=0.0002`. Discriminator: `lr=0.0001`.  
+The discriminator runs at half the generator's learning rate — the baseline run showed discriminator dominance (D loss → 0, G loss rising), so slowing it down gives the generator more useful gradient signal.
+
+**Label smoothing:** real labels use `0.9` instead of `1.0`. Prevents the discriminator from becoming overconfident on real images.
 
 ---
 
