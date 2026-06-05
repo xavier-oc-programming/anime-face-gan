@@ -257,9 +257,9 @@ def train():
 
 if __name__ == '__main__':
     train()
-
-# Shut down the Azure ML Compute Instance immediately after training.
-# This prevents idle billing — the machine terminates the moment training
-# completes. Remove this line for local training.
-import subprocess
-subprocess.run(['sudo', 'shutdown', '-h', 'now'])
+    # Shut down the Azure ML Compute Instance immediately after training.
+    # This prevents idle billing — the machine terminates the moment training
+    # completes. Only runs when train.py is executed directly (not when imported).
+    # Remove these two lines for local training.
+    import subprocess
+    subprocess.run(['sudo', 'shutdown', '-h', 'now'])

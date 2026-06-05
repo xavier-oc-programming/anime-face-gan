@@ -22,7 +22,8 @@ Azure ML Compute Instance. Inference served via FastAPI on Azure App Service.
 
 - Python 3.11+
 - `pip install -r requirements.txt`
-- Trained `models/generator.keras` (committed after training — see section 2)
+- Kaggle account (free) — for dataset download
+- Trained `models/generator.keras` — committed after training, or train it yourself (see section 2)
 
 ---
 
@@ -36,7 +37,7 @@ uvicorn main:app --reload
 # Open http://localhost:8000
 ```
 
-The API loads `models/generator.keras` at startup. If the model file is present, every endpoint is live immediately — no retraining required.
+The API loads `models/generator.keras` at startup. If the model file is present every endpoint is live immediately — no retraining required.
 
 Generate faces from the command line:
 
@@ -47,11 +48,56 @@ python generate.py
 
 ---
 
-## 2. Training
+## 2. Dataset
 
-Three options depending on available compute.
+The Anime Face Dataset (~63,000 images, ~330MB) is downloaded via kagglehub. Images go into `data/anime_faces/` which is gitignored — the folder is tracked so it is ready to receive images on clone.
 
-### Option A: Azure ML Compute Instance (Recommended)
+**Set up Kaggle credentials first (one-time):**
+
+Go to [kaggle.com](https://kaggle.com) → profile → Settings → API → **Create New Token**. This downloads `kaggle.json`.
+
+```bash
+mkdir -p ~/.kaggle
+mv ~/Downloads/kaggle.json ~/.kaggle/
+chmod 600 ~/.kaggle/kaggle.json
+```
+
+Or use environment variables (Colab, CI, other machines):
+
+```bash
+export KAGGLE_USERNAME=your_username
+export KAGGLE_KEY=your_api_key
+```
+
+**Download via the notebook** — run the download cell in [notebook.ipynb](notebook.ipynb), or from the command line:
+
+```python
+import kagglehub, shutil
+from pathlib import Path
+src = Path(kagglehub.dataset_download('splcher/animefacedataset'))
+for p in src.rglob('*.jpg'):
+    shutil.copy(p, 'data/anime_faces/' + p.name)
+```
+
+---
+
+## 3. Training
+
+Four options depending on available compute. The notebook supports all of them.
+
+### Option A: Notebook (Colab / Kaggle / local)
+
+Open [notebook.ipynb](notebook.ipynb) and run the training cell. It calls `train()` directly — the Azure ML shutdown line does **not** fire when training is run from the notebook.
+
+```
+GPU (Colab T4 / Kaggle P100) — ~1-2 hours for 100 epochs
+Local CPU                     — ~8-12 hours for 100 epochs
+```
+
+On **Google Colab**: Runtime → Change runtime type → T4 GPU, then run all cells.  
+On **Kaggle**: Add dataset `splcher/animefacedataset`, enable GPU accelerator, run all cells.
+
+### Option B: Azure ML Compute Instance
 
 Full setup in [azure_ml_setup.md](azure_ml_setup.md).
 
@@ -61,37 +107,40 @@ python train.py
 # Instance shuts down automatically when training completes
 ```
 
-Expected cost: $2–5. The last line of `train.py` issues `sudo shutdown -h now` — remove it for local training.
+`train.py` ends with `subprocess.run(['sudo', 'shutdown', '-h', 'now'])` inside `if __name__ == '__main__':` — the instance terminates the moment the script exits. Expected cost: $2–5.
 
-### Option B: Local CPU
+### Option C: Local CPU
 
 ```bash
-# Remove the subprocess shutdown line from train.py first
 python train.py
+# Remove the shutdown lines at the bottom first, or they will shut down your machine
 ```
 
-Expect 8–12 hours for 100 epochs. No cloud costs.
+Expect 8–12 hours for 100 epochs.
 
-### Option C: Free GPU (Google Colab or Kaggle)
+### After training
 
-- **Google Colab**: upload dataset, run `train.py` (remove shutdown line), download `generator.keras`
-- **Kaggle**: dataset already at `splcher/animefacedataset` — 30 free GPU hours/week
+Commit the outputs so the inference API and notebook work without retraining:
 
-See [azure_ml_setup.md](azure_ml_setup.md) for step-by-step instructions.
+```bash
+git add models/generator.keras models/discriminator.keras models/training_log.json samples/
+git commit -m "Add trained generator — 100 epochs, Azure ML"
+git push
+```
 
 ---
 
-## 3. Project Structure
+## 4. Project Structure
 
 ```
 anime-face-gan/
 ├── config.py               # Single source of truth for all constants
-├── train.py                # DCGAN training script (runs on Azure ML)
-├── generate.py             # Standalone generation script
+├── train.py                # DCGAN training script (Azure ML or local)
+├── generate.py             # Standalone generation and interpolation script
 ├── main.py                 # FastAPI inference application
-├── notebook.ipynb          # Architecture walkthrough and training analysis
+├── notebook.ipynb          # Architecture walkthrough, dataset download, training, analysis
 ├── azure_ml_setup.md       # Azure ML training setup guide
-├── Dockerfile              # Inference container
+├── Dockerfile              # Inference container (CPU-only, no training)
 ├── startup.txt             # Azure App Service startup command
 ├── requirements.txt
 ├── portfolio.yaml
@@ -102,22 +151,22 @@ anime-face-gan/
 ├── templates/
 │   └── index.html          # Demo frontend (dark theme, inline CSS/JS)
 ├── tests/
-│   └── test_api.py         # pytest — all tests pass with or without model
+│   └── test_api.py         # pytest — passes with or without model file
 ├── models/
 │   ├── generator.keras     # Committed after training (~50MB)
 │   ├── discriminator.keras # Committed after training
-│   └── training_log.json   # gen_loss and disc_loss per epoch
+│   └── training_log.json   # gen_loss and disc_loss per epoch (placeholder until trained)
 ├── samples/
-│   ├── epoch_0010.png      # Sample grids at every 10 epochs
+│   ├── epoch_0010.png      # Sample grids saved every 10 epochs during training
 │   ├── ...
 │   └── final_samples.png
 └── data/
-    └── anime_faces/        # Gitignored — download separately
+    └── anime_faces/        # Gitignored images — download via notebook or kagglehub
 ```
 
 ---
 
-## 4. Architecture
+## 5. Architecture
 
 ### Generator
 
@@ -149,7 +198,7 @@ BatchNormalization, LeakyReLU(0.2), and Dropout(0.3) after every layer except th
 
 ---
 
-## 5. Training Dynamic
+## 6. Training Dynamic
 
 The generator and discriminator have opposing objectives expressed as a minimax game:
 
@@ -171,7 +220,7 @@ disc_loss = cross_entropy(ones,  real_output) \
 
 ---
 
-## 6. Training Stability
+## 7. Training Stability
 
 GAN training failure modes and how the architecture prevents them:
 
@@ -183,7 +232,7 @@ GAN training failure modes and how the architecture prevents them:
 
 ---
 
-## 7. Latent Space Interpolation
+## 8. Latent Space Interpolation
 
 ```bash
 python generate.py  # runs generate_interpolation() alongside generate_faces()
@@ -193,7 +242,7 @@ Interpolating linearly between two noise vectors produces a smooth morphing sequ
 
 ---
 
-## 8. Azure ML Training Setup
+## 9. Azure ML Training Setup
 
 Brief overview:
 
@@ -207,22 +256,23 @@ Full guide: [azure_ml_setup.md](azure_ml_setup.md)
 
 ---
 
-## 9. Cost Breakdown
+## 10. Cost Breakdown
 
 | Item | Cost |
 |------|------|
 | GPU training (Standard_NC6, ~2hr) | ~$2 |
 | CPU training (Standard_DS3_v2, ~10hr) | ~$2.50 |
+| Google Colab / Kaggle GPU | Free |
 | Azure App Service F1 (inference) | Free tier |
 
-Cost controls:
-- `train.py` last line: `subprocess.run(['sudo', 'shutdown', '-h', 'now'])`
+Azure cost controls:
+- `train.py` shutdown line fires only when run as `python train.py` (not from notebook)
 - 15-minute idle shutdown in Azure ML Studio
 - $5 budget alert in Azure Cost Management
 
 ---
 
-## 10. Deployment
+## 11. Deployment
 
 ```bash
 az group create --name anime-face-app-rg --location westeurope
@@ -238,35 +288,35 @@ Scale down to F1 (free tier) via Portal after creation if desired.
 
 ---
 
-## 11. CI/CD
+## 12. CI/CD
 
-GitHub Actions runs `pytest tests/ -v` on every push to `main`. Tests are written to pass with or without `generator.keras` — generation endpoints return 503 gracefully when the model is missing.
+GitHub Actions runs `pytest tests/ -v` on every push to `main`. Tests pass with or without `generator.keras` — generation endpoints return 503 gracefully when the model is missing.
 
 ---
 
-## 12. Design Decisions
+## 13. Design Decisions
 
 **Why anime faces over MNIST or CIFAR-10**
-Anime faces have low intra-class variance — all images share a consistent art style, similar face geometry, and uniform scale. This means the generator converges faster and produces cleaner results than on real-face datasets, where variation in lighting, pose, and background creates a much harder distribution to learn. The 63,000-image dataset is large enough to train a 64×64 GAN to convergence.
+Anime faces have low intra-class variance — all images share a consistent art style, similar face geometry, and uniform scale. This means the generator converges faster and produces cleaner results than on real-face datasets, where variation in lighting, pose, and background creates a much harder distribution to learn.
 
 **Why LATENT_DIM=128**
-128 dimensions gives the generator enough capacity to represent the variation in the training data — different face shapes, hair colours, expressions — without being so large that sampling becomes inefficient or training slows. Lower values (64) produce less variety; higher values (256+) add little quality benefit at 64×64 resolution.
+128 dimensions gives the generator enough capacity to represent the variation in the training data — different face shapes, hair colours, expressions — without being so large that sampling becomes inefficient. Lower values (64) produce less variety; higher values (256+) add little quality benefit at 64×64 resolution.
 
 **Why BETA_1=0.5 for Adam**
-The default Adam momentum (0.9) causes training instability in GANs. High momentum means the optimizer continues in a direction for many steps even after the loss surface changes — in GANs, where the discriminator and generator are constantly shifting each other's loss landscape, this causes the discriminator to overshoot and the training to oscillate. BETA_1=0.5 reduces this momentum, making the optimizer more responsive to the current gradient.
+The default Adam momentum (0.9) causes training instability in GANs. High momentum means the optimizer continues in a direction for many steps even after the loss surface changes — in GANs, where both networks are constantly shifting each other's loss landscape, this causes oscillation. BETA_1=0.5 reduces momentum, making the optimizer more responsive to the current gradient.
 
 **Why Dropout in the discriminator**
-Without Dropout, the discriminator can become too accurate too quickly. When the discriminator is near-perfect, the generator receives gradients close to zero — it gets no useful signal about how to improve. Dropout(0.3) keeps the discriminator imperfect enough that the generator always has something to learn from. It is specifically in the discriminator, not the generator, because the problem is discriminator dominance, not generator dominance.
+Without Dropout, the discriminator becomes too accurate too quickly. When it is near-perfect, the generator receives gradients close to zero — no useful signal about how to improve. Dropout(0.3) keeps the discriminator imperfect enough that the generator always has something to learn from.
 
 **Why train on Azure ML rather than locally**
-Training 100 epochs on 63,000 64×64 colour images takes 8–12 hours on CPU. Azure ML Compute Instance provides managed cloud compute: a clean environment, no interference with local work, and a GPU option that reduces training time to ~2 hours. The training infrastructure (Azure ML Compute Instance) is also distinct from the inference infrastructure (Azure App Service) — the same separation used in production ML systems.
+Training 100 epochs on 63,000 64×64 colour images takes 8–12 hours on CPU. Azure ML Compute Instance provides managed cloud compute with a GPU option that reduces training time to ~2 hours. The training infrastructure (Azure ML) is distinct from the inference infrastructure (Azure App Service) — the same separation used in production ML systems.
 
-**Why the subprocess shutdown line is the last line of train.py**
-The compute instance runs at $0.25–0.90/hr. If training finishes at 2am and is not manually stopped, the idle cost accumulates until morning. The shutdown line eliminates that possibility — the instance terminates the instant the Python process exits normally. It is the last line so it runs after all model saving is complete. A 15-minute idle shutdown and a $5 budget alert provide additional layers of protection.
+**Why the shutdown line is inside `if __name__ == '__main__':`**
+The shutdown only fires when `train.py` is run directly as a script (`python train.py`) on Azure ML — not when `train()` is imported by the notebook. This means the notebook training cell works safely on Colab, Kaggle, or local machines without risk of shutting down the host.
 
 ---
 
-## 13. Dependencies
+## 14. Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
@@ -274,6 +324,7 @@ The compute instance runs at $0.25–0.90/hr. If training finishes at 2am and is
 | numpy | >=1.24,<2.0 | Array operations, image processing |
 | matplotlib | >=3.7 | Training visualisation in notebook |
 | pillow | >=10.0 | Image loading and grid assembly |
+| kagglehub | >=0.3 | Dataset download |
 | fastapi | >=0.110 | REST API framework |
 | uvicorn | >=0.27 | ASGI server |
 | gunicorn | >=21.0 | Production process manager |
