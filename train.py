@@ -240,7 +240,7 @@ def train(model_dir=None, samples_dir=None):
 
         if epoch % SAVE_INTERVAL == 0:
             path = save_sample_grid(generator, epoch, seed, _samples_dir)
-            generator.save(_model_dir / f'generator_epoch_{epoch}.keras')
+            generator.save(_model_dir / f'generator_epoch_{epoch:03d}.keras')
             # Save the log at every checkpoint so a crash mid-training still
             # leaves a complete record of all completed epochs.
             with open(_model_dir / 'training_log.json', 'w') as f:
