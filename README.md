@@ -103,7 +103,7 @@ Consumer Macs have no NVIDIA GPU, and TensorFlow GPU support requires CUDA — a
 2. File → Open notebook → GitHub → paste `https://github.com/xavier-oc-programming/anime-face-gan` → open `notebook.ipynb`
 3. Runtime → Change runtime type → **T4 GPU** → Save
 4. If the dataset download cell fails with an authentication error: click the **key icon** in the Colab left sidebar → add `KAGGLE_USERNAME` and `KAGGLE_KEY` (from kaggle.com → Settings → API → Create New Token). If you already have `~/.kaggle/kaggle.json` locally, kagglehub found it automatically — Colab has no such file so credentials must be provided explicitly.
-5. Run all cells in order — the dataset downloads, training starts, and checkpoints are saved to **Google Drive** (`My Drive/anime-face-gan/`) every 10 epochs automatically. If Colab disconnects mid-training, you lose at most the current 10-epoch interval.
+5. Run all cells in order. When the training cell runs, a popup will appear: **"Permit this notebook to access your Google Drive files?"** — click **Connect to Google Drive** and complete the sign-in. This mounts your Drive so checkpoints are saved to `My Drive/anime-face-gan/` every 10 epochs. If Colab disconnects mid-training, you lose at most the current 10-epoch interval.
 6. Download `generator.keras` and `training_log.json` from Google Drive → `anime-face-gan/models/`
 7. Commit both files to the repo locally
 
