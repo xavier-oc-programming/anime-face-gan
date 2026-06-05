@@ -103,22 +103,18 @@ Consumer Macs have no NVIDIA GPU, and TensorFlow GPU support requires CUDA — a
 2. File → Open notebook → GitHub → paste `https://github.com/xavier-oc-programming/anime-face-gan` → open `notebook.ipynb`
 3. Runtime → Change runtime type → **T4 GPU** → Save
 4. If the dataset download cell fails with an authentication error: click the **key icon** in the Colab left sidebar → add `KAGGLE_USERNAME` and `KAGGLE_KEY` (from kaggle.com → Settings → API → Create New Token). If you already have `~/.kaggle/kaggle.json` locally, kagglehub found it automatically — Colab has no such file so credentials must be provided explicitly.
-5. Run all cells in order — the dataset downloads automatically, training starts, `generator.keras` saves to the Colab `/content/` filesystem
-6. Download `models/generator.keras` and `models/training_log.json`: Files panel (left sidebar) → right-click → Download
+5. Run all cells in order — the dataset downloads, training starts, and checkpoints are saved to **Google Drive** (`My Drive/anime-face-gan/`) every 10 epochs automatically. If Colab disconnects mid-training, you lose at most the current 10-epoch interval.
+6. Download `generator.keras` and `training_log.json` from Google Drive → `anime-face-gan/models/`
 7. Commit both files to the repo locally
 
 **Kaggle Notebooks (free P100 GPU, 30hr/week):**
 1. Go to [kaggle.com/code](https://kaggle.com/code) → New Notebook
 2. File → Import Notebook → GitHub → paste `https://github.com/xavier-oc-programming/anime-face-gan` → import `notebook.ipynb`
 3. Settings (right panel) → Accelerator → **GPU P100**
-4. Add Dataset: search `splcher/animefacedataset` → Add (skip the download cell — data is already mounted at `/kaggle/input/animefacedataset/`)
-5. Update `DATA_DIR` in the first code cell to point to the Kaggle input path:
-   ```python
-   DATA_DIR = Path('/kaggle/input/animefacedataset/images')
-   ```
-6. Run all cells — training completes and saves `generator.keras` to the output
-7. Save version (top right) → the output files appear under Output → download `generator.keras` and `training_log.json`
-8. Commit both files to the repo locally
+4. Add Dataset: search `splcher/animefacedataset` → Add (the training cell overrides `DATA_DIR` to the Kaggle input path automatically — skip the download cell)
+5. Run all cells — checkpoints save to `/kaggle/working/` every 10 epochs
+6. **Save Version** (top right) after training completes → output files appear under the Output tab → download `generator.keras` and `training_log.json`
+7. Commit both files to the repo locally
 
 ### Option B: Azure ML Compute Instance
 

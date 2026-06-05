@@ -182,7 +182,7 @@ def train_step(real_images):
 # Sample image saving
 # ---------------------------------------------------------------------------
 
-def save_sample_grid(epoch, seed_noise):
+def save_sample_grid(epoch, seed_noise, samples_dir):
     predictions = generator(seed_noise, training=False).numpy()
     # Denormalise from [-1, 1] to [0, 255]
     predictions = ((predictions + 1) * 127.5).astype(np.uint8)
@@ -192,7 +192,7 @@ def save_sample_grid(epoch, seed_noise):
     for i, img in enumerate(predictions):
         r, c = divmod(i, cols)
         grid[r * IMG_SIZE:(r + 1) * IMG_SIZE, c * IMG_SIZE:(c + 1) * IMG_SIZE] = img
-    out = SAMPLES_DIR / f'epoch_{epoch:04d}.png'
+    out = samples_dir / f'epoch_{epoch:04d}.png'
     Image.fromarray(grid).save(out)
     return str(out)
 
@@ -201,7 +201,15 @@ def save_sample_grid(epoch, seed_noise):
 # Training loop
 # ---------------------------------------------------------------------------
 
-def train():
+def train(model_dir=None, samples_dir=None):
+    # model_dir and samples_dir can be overridden by the notebook to point to
+    # persistent storage (e.g. Google Drive on Colab) so checkpoints survive
+    # session crashes or disconnections.
+    _model_dir   = Path(model_dir)   if model_dir   else MODEL_DIR
+    _samples_dir = Path(samples_dir) if samples_dir else SAMPLES_DIR
+    _model_dir.mkdir(parents=True, exist_ok=True)
+    _samples_dir.mkdir(parents=True, exist_ok=True)
+
     dataset = load_dataset()
 
     # Using a fixed seed means the same N_SAMPLES random vectors are used at
@@ -234,25 +242,29 @@ def train():
         print(f'Epoch {epoch:03d}/{EPOCHS} | G: {mean_g:.4f} | D: {mean_d:.4f} | {elapsed:.0f}s')
 
         if epoch % SAVE_INTERVAL == 0:
-            path = save_sample_grid(epoch, seed)
-            generator.save(MODEL_DIR / f'generator_epoch_{epoch}.keras')
-            print(f'  Saved sample → {path}')
+            path = save_sample_grid(epoch, seed, _samples_dir)
+            generator.save(_model_dir / f'generator_epoch_{epoch}.keras')
+            # Save the log at every checkpoint so a crash mid-training still
+            # leaves a complete record of all completed epochs.
+            with open(_model_dir / 'training_log.json', 'w') as f:
+                json.dump(training_log, f, indent=2)
+            print(f'  Checkpoint saved → epoch {epoch} | {path}')
 
     # Final saves
-    generator.save(MODEL_DIR / 'generator.keras')
-    discriminator.save(MODEL_DIR / 'discriminator.keras')
-    save_sample_grid(EPOCHS, seed)
-    (SAMPLES_DIR / f'epoch_{EPOCHS:04d}.png').rename(SAMPLES_DIR / 'final_samples.png')
+    generator.save(_model_dir / 'generator.keras')
+    discriminator.save(_model_dir / 'discriminator.keras')
+    save_sample_grid(EPOCHS, seed, _samples_dir)
+    (_samples_dir / f'epoch_{EPOCHS:04d}.png').rename(_samples_dir / 'final_samples.png')
 
-    with open(MODEL_DIR / 'training_log.json', 'w') as f:
+    with open(_model_dir / 'training_log.json', 'w') as f:
         json.dump(training_log, f, indent=2)
 
     total = time.time() - start
     print(f'\nTraining complete in {total/60:.1f} minutes')
     print(f'Final G loss: {training_log["gen_loss"][-1]:.4f}')
     print(f'Final D loss: {training_log["disc_loss"][-1]:.4f}')
-    print('Models saved to models/')
-    print('Samples saved to samples/')
+    print(f'Models saved to {_model_dir}')
+    print(f'Samples saved to {_samples_dir}')
 
 
 if __name__ == '__main__':
