@@ -19,9 +19,6 @@ from config import (
     N_SAMPLES, SAMPLES_DIR, SAVE_INTERVAL,
 )
 
-MODEL_DIR.mkdir(parents=True, exist_ok=True)
-SAMPLES_DIR.mkdir(parents=True, exist_ok=True)
-
 
 # ---------------------------------------------------------------------------
 # Data loading
@@ -133,17 +130,14 @@ def build_discriminator():
 # Loss functions
 # ---------------------------------------------------------------------------
 
-cross_entropy = BinaryCrossentropy()
-
-
-def generator_loss(fake_output):
+def generator_loss(cross_entropy, fake_output):
     # The generator wants the discriminator to believe its output is real
     # (label=1). Generator loss is high when the discriminator correctly
     # identifies fakes.
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
 
-def discriminator_loss(real_output, fake_output):
+def discriminator_loss(cross_entropy, real_output, fake_output):
     # The discriminator wants to label real images as 1 and fake images as 0.
     # Discriminator loss is high when it makes mistakes on either.
     real_loss = cross_entropy(tf.ones_like(real_output), real_output)
@@ -152,37 +146,10 @@ def discriminator_loss(real_output, fake_output):
 
 
 # ---------------------------------------------------------------------------
-# Training step
-# ---------------------------------------------------------------------------
-
-generator = build_generator()
-discriminator = build_discriminator()
-
-gen_optimizer = Adam(LEARNING_RATE_G, beta_1=BETA_1)
-disc_optimizer = Adam(LEARNING_RATE_D, beta_1=BETA_1)
-
-
-@tf.function
-def train_step(real_images):
-    noise = tf.random.normal([BATCH_SIZE, LATENT_DIM])
-    with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-        fake_images = generator(noise, training=True)
-        real_output = discriminator(real_images, training=True)
-        fake_output = discriminator(fake_images, training=True)
-        gen_loss = generator_loss(fake_output)
-        disc_loss = discriminator_loss(real_output, fake_output)
-    gen_gradients = gen_tape.gradient(gen_loss, generator.trainable_variables)
-    disc_gradients = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
-    gen_optimizer.apply_gradients(zip(gen_gradients, generator.trainable_variables))
-    disc_optimizer.apply_gradients(zip(disc_gradients, discriminator.trainable_variables))
-    return gen_loss, disc_loss
-
-
-# ---------------------------------------------------------------------------
 # Sample image saving
 # ---------------------------------------------------------------------------
 
-def save_sample_grid(epoch, seed_noise, samples_dir):
+def save_sample_grid(generator, epoch, seed_noise, samples_dir):
     predictions = generator(seed_noise, training=False).numpy()
     # Denormalise from [-1, 1] to [0, 255]
     predictions = ((predictions + 1) * 127.5).astype(np.uint8)
@@ -210,6 +177,29 @@ def train(model_dir=None, samples_dir=None):
     _model_dir.mkdir(parents=True, exist_ok=True)
     _samples_dir.mkdir(parents=True, exist_ok=True)
 
+    # Build models inside train() so importing this module does not allocate
+    # GPU memory — avoids kernel crashes when the module is imported on Colab.
+    generator     = build_generator()
+    discriminator = build_discriminator()
+    gen_optimizer  = Adam(LEARNING_RATE_G, beta_1=BETA_1)
+    disc_optimizer = Adam(LEARNING_RATE_D, beta_1=BETA_1)
+    cross_entropy  = BinaryCrossentropy()
+
+    @tf.function
+    def train_step(real_images):
+        noise = tf.random.normal([BATCH_SIZE, LATENT_DIM])
+        with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+            fake_images = generator(noise, training=True)
+            real_output = discriminator(real_images, training=True)
+            fake_output = discriminator(fake_images, training=True)
+            gen_loss  = generator_loss(cross_entropy, fake_output)
+            disc_loss = discriminator_loss(cross_entropy, real_output, fake_output)
+        gen_grads  = gen_tape.gradient(gen_loss,  generator.trainable_variables)
+        disc_grads = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+        gen_optimizer.apply_gradients(zip(gen_grads,  generator.trainable_variables))
+        disc_optimizer.apply_gradients(zip(disc_grads, discriminator.trainable_variables))
+        return gen_loss, disc_loss
+
     dataset = load_dataset()
 
     # Using a fixed seed means the same N_SAMPLES random vectors are used at
@@ -225,7 +215,7 @@ def train(model_dir=None, samples_dir=None):
     discriminator.summary()
 
     for epoch in range(1, EPOCHS + 1):
-        epoch_gen_losses = []
+        epoch_gen_losses  = []
         epoch_disc_losses = []
 
         for batch in dataset:
@@ -242,7 +232,7 @@ def train(model_dir=None, samples_dir=None):
         print(f'Epoch {epoch:03d}/{EPOCHS} | G: {mean_g:.4f} | D: {mean_d:.4f} | {elapsed:.0f}s')
 
         if epoch % SAVE_INTERVAL == 0:
-            path = save_sample_grid(epoch, seed, _samples_dir)
+            path = save_sample_grid(generator, epoch, seed, _samples_dir)
             generator.save(_model_dir / f'generator_epoch_{epoch}.keras')
             # Save the log at every checkpoint so a crash mid-training still
             # leaves a complete record of all completed epochs.
@@ -253,7 +243,7 @@ def train(model_dir=None, samples_dir=None):
     # Final saves
     generator.save(_model_dir / 'generator.keras')
     discriminator.save(_model_dir / 'discriminator.keras')
-    save_sample_grid(EPOCHS, seed, _samples_dir)
+    save_sample_grid(generator, EPOCHS, seed, _samples_dir)
     (_samples_dir / f'epoch_{EPOCHS:04d}.png').rename(_samples_dir / 'final_samples.png')
 
     with open(_model_dir / 'training_log.json', 'w') as f:
