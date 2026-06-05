@@ -200,6 +200,7 @@ def train(model_dir=None, samples_dir=None):
         disc_optimizer.apply_gradients(zip(disc_grads, discriminator.trainable_variables))
         return gen_loss, disc_loss
 
+    print('Loading dataset...', flush=True)
     dataset = load_dataset()
 
     # Using a fixed seed means the same N_SAMPLES random vectors are used at
@@ -229,7 +230,7 @@ def train(model_dir=None, samples_dir=None):
         training_log['disc_loss'].append(mean_d)
 
         elapsed = time.time() - start
-        print(f'Epoch {epoch:03d}/{EPOCHS} | G: {mean_g:.4f} | D: {mean_d:.4f} | {elapsed:.0f}s')
+        print(f'Epoch {epoch:03d}/{EPOCHS} | G: {mean_g:.4f} | D: {mean_d:.4f} | {elapsed:.0f}s', flush=True)
 
         if epoch % SAVE_INTERVAL == 0:
             path = save_sample_grid(generator, epoch, seed, _samples_dir)
