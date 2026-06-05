@@ -27,7 +27,7 @@ az ml workspace create \
 
 ## 3. Create Compute Instance
 
-**CPU (cheaper, slower):**
+**CPU — Standard_DS3_v2 (recommended):**
 ```bash
 az ml compute create \
   --name anime-face-compute \
@@ -36,9 +36,10 @@ az ml compute create \
   --resource-group anime-face-gan-rg \
   --workspace-name anime-face-gan-ws
 ```
-Cost: ~$0.25/hr · ~10hr training = ~$2.50 total
+Cost: ~$0.25/hr · ~10hr training = ~$2.50 total  
+Available on all Azure subscriptions by default.
 
-**GPU (faster, slightly more):**
+**GPU — Standard_NC6 (faster, but requires quota):**
 ```bash
 az ml compute create \
   --name anime-face-compute \
@@ -47,7 +48,13 @@ az ml compute create \
   --resource-group anime-face-gan-rg \
   --workspace-name anime-face-gan-ws
 ```
-Cost: ~$0.90/hr · ~2hr training = ~$2 total
+Cost: ~$0.90/hr · ~2hr training = ~$2 total  
+Note: GPU quota is not enabled by default on most Azure subscriptions. You will likely
+hit a quota error unless you have previously requested GPU access via Azure Portal →
+Subscriptions → Usage + quotas. Use Standard_DS3_v2 if you have not done this.
+
+Note: the compute instance is only used during training and shuts down immediately
+after. It has no relation to Azure App Service, which serves inference on CPU.
 
 ---
 
