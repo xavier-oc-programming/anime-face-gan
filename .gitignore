@@ -8,4 +8,7 @@ venv/
 .vscode/
 .azure/
 deploy.zip
-data/
+data/**
+!data/
+!data/anime_faces/
+!data/anime_faces/.gitkeep
