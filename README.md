@@ -102,7 +102,7 @@ Consumer Macs have no NVIDIA GPU, and TensorFlow GPU support requires CUDA — a
 1. Go to [colab.research.google.com](https://colab.research.google.com)
 2. File → Open notebook → GitHub → paste `https://github.com/xavier-oc-programming/anime-face-gan` → open `notebook.ipynb`
 3. Runtime → Change runtime type → **T4 GPU** → Save
-4. Run the Kaggle credentials cell first (set `KAGGLE_USERNAME` and `KAGGLE_KEY` via Colab's secrets: click the key icon in the left sidebar → add both values)
+4. If the dataset download cell fails with an authentication error: click the **key icon** in the Colab left sidebar → add `KAGGLE_USERNAME` and `KAGGLE_KEY` (from kaggle.com → Settings → API → Create New Token). If you already have `~/.kaggle/kaggle.json` locally, kagglehub found it automatically — Colab has no such file so credentials must be provided explicitly.
 5. Run all cells in order — the dataset downloads automatically, training starts, `generator.keras` saves to the Colab `/content/` filesystem
 6. Download `models/generator.keras` and `models/training_log.json`: Files panel (left sidebar) → right-click → Download
 7. Commit both files to the repo locally
