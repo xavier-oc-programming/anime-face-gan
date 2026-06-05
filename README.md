@@ -90,12 +90,35 @@ Four options depending on available compute. The notebook supports all of them.
 Open [notebook.ipynb](notebook.ipynb) and run the training cell. It calls `train()` directly — the Azure ML shutdown line does **not** fire when training is run from the notebook.
 
 ```
-GPU (Colab T4 / Kaggle P100) — ~1-2 hours for 100 epochs
-Local CPU                     — ~8-12 hours for 100 epochs
+Google Colab T4 GPU  — ~1-2 hours for 100 epochs   (free)
+Kaggle P100 GPU      — ~1-2 hours for 100 epochs   (free, 30hr/week)
+Local CPU            — ~8-12 hours for 100 epochs
 ```
 
-On **Google Colab**: Runtime → Change runtime type → T4 GPU, then run all cells.  
-On **Kaggle**: Add dataset `splcher/animefacedataset`, enable GPU accelerator, run all cells.
+**Why local machines use CPU, not GPU**
+Consumer Macs have no NVIDIA GPU, and TensorFlow GPU support requires CUDA — an NVIDIA-only toolkit. Apple Silicon (M1/M2/M3) has a GPU but it uses Metal, not CUDA; TensorFlow's Metal plugin exists but is experimental and not worth the setup friction for a one-off training run. If you have a Windows machine with an NVIDIA GPU, TensorFlow GPU will work but requires matching the exact CUDA + cuDNN versions to your TensorFlow version. For most users, Colab or Kaggle is the path of least resistance for GPU training.
+
+**Google Colab (free T4 GPU):**
+1. Go to [colab.research.google.com](https://colab.research.google.com)
+2. File → Open notebook → GitHub → paste `https://github.com/xavier-oc-programming/anime-face-gan` → open `notebook.ipynb`
+3. Runtime → Change runtime type → **T4 GPU** → Save
+4. Run the Kaggle credentials cell first (set `KAGGLE_USERNAME` and `KAGGLE_KEY` via Colab's secrets: click the key icon in the left sidebar → add both values)
+5. Run all cells in order — the dataset downloads automatically, training starts, `generator.keras` saves to the Colab `/content/` filesystem
+6. Download `models/generator.keras` and `models/training_log.json`: Files panel (left sidebar) → right-click → Download
+7. Commit both files to the repo locally
+
+**Kaggle Notebooks (free P100 GPU, 30hr/week):**
+1. Go to [kaggle.com/code](https://kaggle.com/code) → New Notebook
+2. File → Import Notebook → GitHub → paste `https://github.com/xavier-oc-programming/anime-face-gan` → import `notebook.ipynb`
+3. Settings (right panel) → Accelerator → **GPU P100**
+4. Add Dataset: search `splcher/animefacedataset` → Add (skip the download cell — data is already mounted at `/kaggle/input/animefacedataset/`)
+5. Update `DATA_DIR` in the first code cell to point to the Kaggle input path:
+   ```python
+   DATA_DIR = Path('/kaggle/input/animefacedataset/images')
+   ```
+6. Run all cells — training completes and saves `generator.keras` to the output
+7. Save version (top right) → the output files appear under Output → download `generator.keras` and `training_log.json`
+8. Commit both files to the repo locally
 
 ### Option B: Azure ML Compute Instance
 
