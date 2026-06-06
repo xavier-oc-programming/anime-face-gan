@@ -181,6 +181,61 @@
     }
     #no-samples { color: var(--text-muted); font-size: .9rem; }
 
+    /* Info sections */
+    .info-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .info-section h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .info-section p {
+      font-size: .88rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: .75rem;
+    }
+    .info-section p:last-child { margin-bottom: 0; }
+    .info-section ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .info-section ul li {
+      font-size: .88rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      padding: .3rem 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: .75rem;
+    }
+    .info-section ul li:last-child { border-bottom: none; }
+    .info-section ul li .tag {
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--accent);
+      white-space: nowrap;
+      min-width: 90px;
+      padding-top: .05rem;
+    }
+    .kv-grid {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: .3rem .75rem;
+      font-size: .88rem;
+    }
+    .kv-grid .k { color: var(--accent); font-weight: 600; }
+    .kv-grid .v { color: var(--text-muted); }
+
     @media (max-width: 480px) {
       .slider-row { flex-wrap: wrap; }
       .btn-row { flex-direction: column; }
@@ -217,7 +272,7 @@
   <div id="seed-display" style="text-align:center;"></div>
 
   <!-- Training progress -->
-  <details>
+  <details open>
     <summary>Training samples</summary>
     <div class="section-body">
       <div id="no-samples" style="display:none;">No training samples found.</div>
@@ -232,6 +287,45 @@
       </div>
     </div>
   </details>
+
+  <!-- About the model -->
+  <div class="info-section">
+    <h2>About this model</h2>
+    <p>This is a Deep Convolutional GAN (DCGAN) — a system of two neural networks trained in opposition. The <strong style="color:var(--text)">generator</strong> learns to produce anime faces from random noise vectors. The <strong style="color:var(--text)">discriminator</strong> learns to tell real training images apart from generated ones. Neither can win permanently — as the discriminator improves, the generator is forced to improve too, and vice versa.</p>
+    <p>The generator maps a 128-dimensional noise vector through four transposed convolution layers, upsampling from a 4×4 feature map up to a 64×64 RGB image. Every face generated is unique — it has never existed before and is not stored anywhere.</p>
+    <div class="kv-grid" style="margin-top:.75rem;">
+      <span class="k">Architecture</span><span class="v">DCGAN — 4-layer generator, 4-layer discriminator</span>
+      <span class="k">Training data</span><span class="v">33,180 anime face images at 64×64 pixels</span>
+      <span class="k">Training compute</span><span class="v">Google Colab T4 GPU — ~90 minutes for 100 epochs</span>
+      <span class="k">Deployed checkpoint</span><span class="v">Epoch 60 — most competitive point before discriminator dominance</span>
+      <span class="k">Latent dimension</span><span class="v">128 — size of the random noise vector fed to the generator</span>
+      <span class="k">Inference</span><span class="v">FastAPI on Azure App Service — no GPU required</span>
+    </div>
+  </div>
+
+  <!-- Limitations -->
+  <div class="info-section">
+    <h2>Limitations</h2>
+    <ul>
+      <li><span class="tag">Resolution</span>All outputs are 64×64 pixels. Fine details — eyelashes, sharp hair strands, complex expressions — are not representable at this resolution regardless of training quality.</li>
+      <li><span class="tag">D dominance</span>The discriminator gradually outpaced the generator after epoch ~50. When this happens the generator gets weaker gradient signal and quality stops improving. The epoch 60 checkpoint is used to avoid the worst of this.</li>
+      <li><span class="tag">Dataset size</span>Only half the available dataset (33,180 of 63,565 images) was loaded during training due to a Colab cache issue. Less variety in training data means less variety in generated faces.</li>
+      <li><span class="tag">Architecture</span>DCGAN is a foundational architecture from 2015. It has a hard quality ceiling compared to modern generative models trained at higher resolutions.</li>
+    </ul>
+  </div>
+
+  <!-- How to improve -->
+  <div class="info-section">
+    <h2>How to improve this model</h2>
+    <ul>
+      <li><span class="tag">Full dataset</span>Train on all 63,565 images instead of 33,180. More variety means the discriminator cannot memorise patterns as easily, extending the competitive phase of training.</li>
+      <li><span class="tag">More G updates</span>Update the generator twice per discriminator update. When the discriminator pulls ahead, the generator gets more gradient steps to catch up — directly countering dominance.</li>
+      <li><span class="tag">Lower D lr</span>Halve the discriminator learning rate again (0.0001 → 0.00005). Slows the discriminator further in later epochs without changing the architecture.</li>
+      <li><span class="tag">Spectral norm</span>Add spectral normalisation to the discriminator layers. Constrains gradient magnitudes so the discriminator cannot dominate regardless of learning rate.</li>
+      <li><span class="tag">128×128</span>Add one more upsampling block to the generator and one more downsampling block to the discriminator. Doubles the output resolution — significantly more detail at the cost of longer training.</li>
+      <li><span class="tag">StyleGAN2</span>Switch to the StyleGAN2 architecture — purpose-built for face generation, produces near-photorealistic results. Significantly more complex to implement, but pretrained checkpoints on this exact dataset are publicly available.</li>
+    </ul>
+  </div>
 
 </div>
 
