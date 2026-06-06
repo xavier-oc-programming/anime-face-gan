@@ -163,13 +163,6 @@
     details[open] summary::after { transform: rotate(90deg); }
     .section-body { padding: 0 1.5rem 1.5rem; }
 
-    /* Interpolation */
-    #interp-img {
-      max-width: 100%;
-      border-radius: 6px;
-      margin-top: .75rem;
-      animation: fadeIn .4s ease;
-    }
     .caption { margin-top: .6rem; font-size: .8rem; color: var(--text-muted); line-height: 1.5; }
 
     /* Training samples */
@@ -223,18 +216,6 @@
   <div id="stats" style="display:none; text-align:center;"></div>
   <div id="seed-display" style="text-align:center;"></div>
 
-  <!-- Interpolation -->
-  <details>
-    <summary>Latent space interpolation</summary>
-    <div class="section-body">
-      <button class="btn-secondary" id="btn-interp" style="max-width:260px;">Show morphing sequence</button>
-      <div id="interp-area"></div>
-      <p class="caption" id="interp-caption" style="display:none;">
-        The generator smoothly transitions between two random faces through the learned latent space.
-      </p>
-    </div>
-  </details>
-
   <!-- Training progress -->
   <details>
     <summary>Training samples</summary>
@@ -247,7 +228,7 @@
           <button class="btn-secondary" id="btn-next">▶</button>
         </div>
         <img id="epoch-img" src="" alt="Training sample" />
-        <p class="caption">Watch the generator learn — from noise to faces over 100 epochs.</p>
+        <p class="caption">Watch the generator learn — from noise to faces across 100 epochs of training. The deployed model uses the epoch 60 checkpoint, where training was most competitive before discriminator dominance set in.</p>
       </div>
     </div>
   </details>
@@ -312,32 +293,6 @@
   btnSurprise.addEventListener('click', () => {
     const seed = Math.floor(Math.random() * 1e9);
     generate(seed);
-  });
-
-  // Interpolation
-  document.getElementById('btn-interp').addEventListener('click', async () => {
-    const area = document.getElementById('interp-area');
-    const caption = document.getElementById('interp-caption');
-    area.innerHTML = '<div class="spinner" style="margin:1rem auto;"></div>';
-    caption.style.display = 'none';
-    const res = await fetch('/generate/interpolation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ steps: 10 }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      area.innerHTML = `<p style="color:#f44">${err.detail}</p>`;
-      return;
-    }
-    const data = await res.json();
-    area.innerHTML = '';
-    const img = document.createElement('img');
-    img.id = 'interp-img';
-    img.src = 'data:image/png;base64,' + data.image_base64;
-    img.alt = 'Latent space interpolation';
-    area.appendChild(img);
-    caption.style.display = 'block';
   });
 
   // Training samples
