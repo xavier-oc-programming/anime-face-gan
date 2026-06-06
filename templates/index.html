@@ -253,20 +253,28 @@
 
   <!-- Controls -->
   <div class="controls">
+    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.55;">
+      Each face is created by feeding a random 128-dimensional noise vector into the generator network.
+      No face is stored or retrieved — every result is computed fresh on demand.
+    </p>
     <div class="slider-row">
       <label for="n-slider">Number of faces</label>
       <input id="n-slider" type="range" min="4" max="64" step="4" value="16" />
       <span id="n-display">16</span>
     </div>
     <div class="btn-row">
-      <button class="btn-primary" id="btn-generate">Generate</button>
-      <button class="btn-secondary" id="btn-surprise">Surprise me</button>
+      <button class="btn-primary" id="btn-generate" title="Generate faces using a new random seed each time">Generate new faces</button>
+      <button class="btn-secondary" id="btn-surprise" title="Generate with a fixed random seed — the seed number is shown below so you can share or reproduce this exact result">Generate with fixed seed</button>
     </div>
+    <p style="font-size:.78rem;color:#555;margin-top:.75rem;line-height:1.5;">
+      <strong style="color:var(--text-muted)">Generate new faces</strong> — different result every click.<br>
+      <strong style="color:var(--text-muted)">Generate with fixed seed</strong> — pins the randomness so the same seed always produces the same faces. The seed is shown below the output so you can share or revisit a specific result.
+    </p>
   </div>
 
   <!-- Output -->
   <div class="output-area" id="output-area">
-    <p class="placeholder">Click Generate to create anime faces</p>
+    <p class="placeholder">Click "Generate new faces" to create anime faces</p>
   </div>
   <div id="stats" style="display:none; text-align:center;"></div>
   <div id="seed-display" style="text-align:center;"></div>
