@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import tensorflow as tf
+import onnxruntime as ort
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -41,9 +41,9 @@ app.mount('/samples', StaticFiles(directory=str(SAMPLES_DIR)), name='samples')
 generator = None
 MODEL_LOADED = False
 
-model_path = MODEL_DIR / 'generator.keras'
+model_path = MODEL_DIR / 'generator.onnx'
 if model_path.exists():
-    generator = tf.keras.models.load_model(model_path)
+    generator = ort.InferenceSession(str(model_path))
     MODEL_LOADED = True
 else:
     print(f'Warning: {model_path} not found. API will return 503 for generation endpoints.')
@@ -82,10 +82,10 @@ class InterpolationRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _generate_grid(n: int, seed: Optional[int] = None) -> np.ndarray:
-    if seed is not None:
-        tf.random.set_seed(seed)
-    noise = tf.random.normal([n, LATENT_DIM])
-    images = generator(noise, training=False).numpy()
+    rng = np.random.default_rng(seed)
+    noise = rng.standard_normal((n, LATENT_DIM)).astype(np.float32)
+    input_name = generator.get_inputs()[0].name
+    images = generator.run(None, {input_name: noise})[0]
     images = ((images + 1) * 127.5).astype(np.uint8)
     cols = 4
     rows = (n + cols - 1) // cols
@@ -152,15 +152,15 @@ async def generate_single():
 async def generate_interpolation(req: InterpolationRequest):
     if not MODEL_LOADED:
         raise HTTPException(status_code=503, detail='Model not loaded. Train first.')
-    if req.seed is not None:
-        tf.random.set_seed(req.seed)
-    start = tf.random.normal([1, LATENT_DIM])
-    end = tf.random.normal([1, LATENT_DIM])
+    rng = np.random.default_rng(req.seed)
+    start = rng.standard_normal((1, LATENT_DIM)).astype(np.float32)
+    end = rng.standard_normal((1, LATENT_DIM)).astype(np.float32)
     alphas = np.linspace(0, 1, req.steps)
-    noise_vectors = tf.concat(
+    noise_vectors = np.concatenate(
         [start + alpha * (end - start) for alpha in alphas], axis=0
-    )
-    images = generator(noise_vectors, training=False).numpy()
+    ).astype(np.float32)
+    input_name = generator.get_inputs()[0].name
+    images = generator.run(None, {input_name: noise_vectors})[0]
     images = ((images + 1) * 127.5).astype(np.uint8)
     strip = np.concatenate(images, axis=1)
 
