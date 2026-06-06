@@ -338,7 +338,38 @@ The shutdown only fires when `train.py` is run directly as a script (`python tra
 
 ---
 
-## 14. Dependencies
+## 14. Limitations and Improvements
+
+### Current Limitations
+
+**Discriminator dominance in later epochs**  
+The discriminator gradually outpaces the generator after epoch ~50. D loss falls to 0.59 and G loss rises to 3.2 by epoch 100, meaning the generator receives increasingly weak gradient signal in late training. The deployed model uses the epoch 60 checkpoint where the training was most competitive.
+
+**Half dataset used**  
+The Colab cache only provided 33,180 of the expected 63,565 images. The generator has seen less variety than it should, which limits face diversity and sharpness.
+
+**64×64 resolution**  
+All outputs are 64×64 pixels. At this resolution fine details — eyelashes, sharp hair strands, complex expressions — are not representable regardless of how well training goes.
+
+**DCGAN architecture ceiling**  
+DCGAN is a foundational GAN architecture from 2015. It is well-understood and trainable on free GPU compute, but it has a hard quality ceiling compared to modern architectures.
+
+---
+
+### What Would Improve It
+
+| Change | Expected gain | Cost |
+|--------|--------------|------|
+| Full 63,000-image dataset | More face variety, less D dominance | One more Colab run |
+| Update G twice per D step | Extends competitive training phase | One more Colab run |
+| Reduce `LEARNING_RATE_D` to 0.00005 | Slower D, more balanced late training | One more Colab run |
+| Spectral normalisation in D | Stable gradients without LR tuning | Code change + retrain |
+| 128×128 resolution | Sharper details, more complex features | Larger model, longer training |
+| StyleGAN2 architecture | Near-photorealistic anime faces | Significantly more complex; pretrained checkpoints available |
+
+---
+
+## 15. Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
