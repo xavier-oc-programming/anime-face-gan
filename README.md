@@ -249,7 +249,7 @@ GAN training failure modes and how the architecture prevents them:
 | Failure | Sign | Fix Applied |
 |---------|------|-------------|
 | Mode collapse | All outputs look identical | Dropout(0.3) in discriminator |
-| Discriminator dominance | D loss → 0, G loss spikes | Equal learning rates; Dropout slows D |
+| Discriminator dominance | D loss → 0, G loss spikes | Asymmetric learning rates (D=0.0001, G=0.0002); Dropout slows D |
 | Oscillation | Both losses fluctuate without trend | BETA_1=0.5; BatchNorm throughout |
 
 ---
