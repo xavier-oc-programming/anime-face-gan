@@ -291,7 +291,7 @@
           <button class="btn-secondary" id="btn-next">▶</button>
         </div>
         <img id="epoch-img" src="" alt="Training sample" />
-        <p class="caption">Watch the generator learn — from noise to faces across 100 epochs of training. The deployed model uses the epoch 60 checkpoint, where training was most competitive before discriminator dominance set in.</p>
+        <p class="caption">Watch the generator learn — from noise to faces across 100 epochs of training. The deployed model uses the full epoch 100 checkpoint — despite late discriminator dominance, the final weights produce visually preferred results at 64×64 resolution.</p>
       </div>
     </div>
   </details>
@@ -305,7 +305,7 @@
       <span class="k">Architecture</span><span class="v">DCGAN — 4-layer generator, 4-layer discriminator</span>
       <span class="k">Training data</span><span class="v">33,180 anime face images at 64×64 pixels</span>
       <span class="k">Training compute</span><span class="v">Google Colab T4 GPU — ~90 minutes for 100 epochs</span>
-      <span class="k">Deployed checkpoint</span><span class="v">Epoch 60 — most competitive point before discriminator dominance</span>
+      <span class="k">Deployed checkpoint</span><span class="v">Epoch 100 — full training run, preferred visual quality</span>
       <span class="k">Latent dimension</span><span class="v">128 — size of the random noise vector fed to the generator</span>
       <span class="k">Inference</span><span class="v">FastAPI on Azure App Service — no GPU required</span>
     </div>
@@ -316,7 +316,7 @@
     <h2>Limitations</h2>
     <ul>
       <li><span class="tag">Resolution</span>All outputs are 64×64 pixels. Fine details — eyelashes, sharp hair strands, complex expressions — are not representable at this resolution regardless of training quality.</li>
-      <li><span class="tag">D dominance</span>The discriminator gradually outpaced the generator after epoch ~50. When this happens the generator gets weaker gradient signal and quality stops improving. The epoch 60 checkpoint is used to avoid the worst of this.</li>
+      <li><span class="tag">D dominance</span>The discriminator gradually outpaced the generator after epoch ~50. D loss fell to 0.59 and G loss rose to 3.2 by epoch 100, meaning the generator received weaker gradient signal in late training. At 64×64 resolution the visual impact is limited — the full epoch 100 model is deployed as it produces preferred results despite the loss divergence.</li>
       <li><span class="tag">Dataset size</span>Only half the available dataset (33,180 of 63,565 images) was loaded during training due to a Colab cache issue. Less variety in training data means less variety in generated faces.</li>
       <li><span class="tag">Architecture</span>DCGAN is a foundational architecture from 2015. It has a hard quality ceiling compared to modern generative models trained at higher resolutions.</li>
     </ul>

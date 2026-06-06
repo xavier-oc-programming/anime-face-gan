@@ -343,7 +343,7 @@ The shutdown only fires when `train.py` is run directly as a script (`python tra
 ### Current Limitations
 
 **Discriminator dominance in later epochs**  
-The discriminator gradually outpaces the generator after epoch ~50. D loss falls to 0.59 and G loss rises to 3.2 by epoch 100, meaning the generator receives increasingly weak gradient signal in late training. The deployed model uses the epoch 60 checkpoint where the training was most competitive.
+The discriminator gradually outpaces the generator after epoch ~50. D loss falls to 0.59 and G loss rises to 3.2 by epoch 100, meaning the generator receives increasingly weak gradient signal in late training. The full epoch 100 model is deployed — at 64×64 resolution the visual impact of late D dominance is limited and the final checkpoint produces preferred results.
 
 **Half dataset used**  
 The Colab cache only provided 33,180 of the expected 63,565 images. The generator has seen less variety than it should, which limits face diversity and sharpness.
