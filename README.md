@@ -22,8 +22,8 @@ Azure ML Compute Instance. Inference served via FastAPI on Hugging Face Spaces.
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-blue)
 ![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-inference-lightgrey)
 ![Keras](https://img.shields.io/badge/Keras-DCGAN-red)
-![Azure ML](https://img.shields.io/badge/Azure_ML-Compute_Instance-0078D4)
-![Hugging Face Spaces](https://img.shields.io/badge/Hugging_Face-Spaces-yellow)
+![Azure ML](https://img.shields.io/badge/Azure_ML-training-0078D4)
+![Hugging Face Spaces](https://img.shields.io/badge/Hugging_Face-Spaces-FFD21E)
 
 ---
 
