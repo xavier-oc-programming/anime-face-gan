@@ -1,8 +1,17 @@
+---
+title: Anime Face GAN
+emoji: 🎌
+colorFrom: purple
+colorTo: pink
+sdk: docker
+pinned: false
+---
+
 # anime-face-gan
 
 Generates anime faces using a Deep Convolutional GAN trained on 63,000 images.
 Every face is generated from random noise — none of them exist. Trained on
-Azure ML Compute Instance. Inference served via FastAPI on Azure App Service.
+Azure ML Compute Instance. Inference served via FastAPI on Hugging Face Spaces.
 
 **Live demo → [anime-face-gan-xoc.azurewebsites.net](https://anime-face-gan-xoc.azurewebsites.net)**
 &nbsp;&nbsp;·&nbsp;&nbsp;
