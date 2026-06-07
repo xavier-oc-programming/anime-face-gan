@@ -24,7 +24,8 @@ app = FastAPI(
     description=(
         'Generates anime faces using a DCGAN trained on 63,000 images. '
         'POST /generate returns a grid of freshly generated faces — each unique, '
-        'none from the training set. Trained on Azure ML Compute Instance.'
+        'none from the training set. Trained on Azure ML Compute Instance, '
+        'served via ONNX Runtime on Hugging Face Spaces.'
     ),
     version='1.0.0',
 )

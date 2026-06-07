@@ -13,17 +13,17 @@ Generates anime faces using a Deep Convolutional GAN trained on 63,000 images.
 Every face is generated from random noise — none of them exist. Trained on
 Azure ML Compute Instance. Inference served via FastAPI on Hugging Face Spaces.
 
-**Live demo → [anime-face-gan-xoc.azurewebsites.net](https://anime-face-gan-xoc.azurewebsites.net)**
+**Live demo → [xavier-oc-machinelearn-anime-face-gan.hf.space](https://xavier-oc-machinelearn-anime-face-gan.hf.space)**
 &nbsp;&nbsp;·&nbsp;&nbsp;
-**API docs → [/docs](https://anime-face-gan-xoc.azurewebsites.net/docs)**
+**API docs → [/docs](https://xavier-oc-machinelearn-anime-face-gan.hf.space/docs)**
 &nbsp;&nbsp;·&nbsp;&nbsp;
 **Notebook → [notebook.ipynb](notebook.ipynb)**
 
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-blue)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.15-orange)
+![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-inference-lightgrey)
 ![Keras](https://img.shields.io/badge/Keras-DCGAN-red)
 ![Azure ML](https://img.shields.io/badge/Azure_ML-Compute_Instance-0078D4)
-![Azure App Service](https://img.shields.io/badge/Azure-App_Service-0078D4)
+![Hugging Face Spaces](https://img.shields.io/badge/Hugging_Face-Spaces-yellow)
 
 ---
 
@@ -32,7 +32,7 @@ Azure ML Compute Instance. Inference served via FastAPI on Hugging Face Spaces.
 - Python 3.11+
 - `pip install -r requirements.txt`
 - Kaggle account (free) — for dataset download
-- Trained `models/generator.keras` — committed after training, or train it yourself (see section 2)
+- Trained `models/generator.onnx` — committed after training, or train it yourself (see section 2)
 
 ---
 
@@ -43,10 +43,10 @@ git clone https://github.com/xavier-oc-programming/anime-face-gan
 cd anime-face-gan
 pip install -r requirements.txt
 uvicorn main:app --reload
-# Open http://localhost:8000
+# Open http://localhost:7860
 ```
 
-The API loads `models/generator.keras` at startup. If the model file is present every endpoint is live immediately — no retraining required.
+The API loads `models/generator.onnx` at startup. If the model file is present every endpoint is live immediately — no retraining required.
 
 Generate faces from the command line:
 
@@ -148,11 +148,28 @@ Expect 8–12 hours for 100 epochs.
 
 ### After training
 
+Export the trained `.keras` checkpoint to ONNX for inference (one-time, run locally):
+
+```bash
+pip install tf2onnx
+python -m tf2onnx.convert --saved-model models/generator_saved_model --output models/generator.onnx --opset 13
+```
+
+Or export via Python (see `models/` for the committed result):
+
+```python
+import tensorflow as tf, tf2onnx, onnx
+model = tf.keras.models.load_model('models/generator.keras')
+model.export('models/generator_saved_model')
+# then run the tf2onnx CLI command above
+onnx.save(model_proto, 'models/generator.onnx')
+```
+
 Commit the outputs so the inference API and notebook work without retraining:
 
 ```bash
-git add models/generator.keras models/discriminator.keras models/training_log.json samples/
-git commit -m "Add trained generator — 100 epochs, Azure ML"
+git add models/generator.onnx models/discriminator.keras models/training_log.json samples/
+git commit -m "Add trained generator — 100 epochs"
 git push
 ```
 
@@ -169,10 +186,10 @@ anime-face-gan/
 ├── notebook.ipynb          # Architecture walkthrough, dataset download, training, analysis
 ├── azure_ml_setup.md       # Azure ML training setup guide
 ├── Dockerfile              # Inference container (CPU-only, no training)
-├── startup.txt             # Azure App Service startup command
 ├── requirements.txt
 ├── portfolio.yaml
 ├── .gitignore
+├── .gitattributes          # Git LFS tracking for model and image files
 ├── .github/
 │   └── workflows/
 │       └── ci.yml          # GitHub Actions — tests inference API only
@@ -181,9 +198,10 @@ anime-face-gan/
 ├── tests/
 │   └── test_api.py         # pytest — passes with or without model file
 ├── models/
-│   ├── generator.keras     # Committed after training (~50MB)
+│   ├── generator.onnx      # Committed after training (~15MB, used for inference)
+│   ├── generator.keras     # Committed after training (source checkpoint)
 │   ├── discriminator.keras # Committed after training
-│   └── training_log.json   # gen_loss and disc_loss per epoch (placeholder until trained)
+│   └── training_log.json   # gen_loss and disc_loss per epoch
 ├── samples/
 │   ├── epoch_0010.png      # Sample grids saved every 10 epochs during training
 │   ├── ...
@@ -294,7 +312,7 @@ Full guide: [azure_ml_setup.md](azure_ml_setup.md)
 | GPU training (Standard_NC6, ~2hr) | ~$2 |
 | CPU training (Standard_DS3_v2, ~10hr) | ~$2.50 |
 | Google Colab / Kaggle GPU | Free |
-| Azure App Service F1 (inference) | Free tier |
+| Hugging Face Spaces (inference) | Free tier |
 
 Azure cost controls:
 - `train.py` shutdown line fires only when run as `python train.py` (not from notebook)
@@ -305,23 +323,39 @@ Azure cost controls:
 
 ## 11. Deployment
 
+The app is deployed on Hugging Face Spaces using Docker. Push to the `hf` remote to redeploy:
+
 ```bash
-az group create --name anime-face-app-rg --location westeurope
-az appservice plan create --name anime-face-app-plan --resource-group anime-face-app-rg --sku B1 --is-linux
-az webapp create --name anime-face-gan-xoc --resource-group anime-face-app-rg --plan anime-face-app-plan --runtime "PYTHON:3.11"
-az webapp config set --name anime-face-gan-xoc --resource-group anime-face-app-rg --startup-file "gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 600"
-az webapp config appsettings set --name anime-face-gan-xoc --resource-group anime-face-app-rg --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
-zip -r deploy.zip . -x "*.git*" -x "venv/*" -x "__pycache__/*" -x "*.ipynb_checkpoints*" -x "data/*"
-az webapp deployment source config-zip --name anime-face-gan-xoc --resource-group anime-face-app-rg --src deploy.zip
+git remote add hf https://huggingface.co/spaces/xavier-oc-machinelearn/anime-face-gan
+git push hf main
 ```
 
-Scale down to F1 (free tier) via Portal after creation if desired.
+HF Spaces builds the Docker image automatically on push. The app starts in ~30 seconds with no CPU quota — unlike Azure App Service's free tier (F1), which enforces a 60 CPU-minute/day limit that TensorFlow-based cold starts exhaust quickly.
+
+**Why Hugging Face Spaces over Azure App Service**
+Azure App Service (F1 free tier) was the initial target, matching the pattern used across other projects in this portfolio. However, the F1 tier enforces a 60 CPU-minute/day quota. TensorFlow's import overhead alone (~2–3 CPU minutes per cold start) exhausted the daily quota within a few app restarts, making the service unreliable. Switching inference to ONNX Runtime (`onnxruntime`, ~10MB vs TensorFlow's ~500MB) significantly reduced startup cost, but F1's shared CPU still made cold starts unpredictable.
+
+Hugging Face Spaces was chosen for cost reasons — not unfamiliarity with Azure. All other projects in this portfolio run on Azure App Service without issue; this project's inference load profile (cold starts with a model load on every restart) is a poor fit for a quota-based free tier. HF Spaces runs the Docker container continuously with no daily CPU limit, which suits the workload.
+
+**Local development:**
+
+```bash
+uvicorn main:app --reload --port 7860
+# Open http://localhost:7860
+```
+
+**Docker (local):**
+
+```bash
+docker build -t anime-face-gan .
+docker run -p 7860:7860 anime-face-gan
+```
 
 ---
 
 ## 12. CI/CD
 
-GitHub Actions runs `pytest tests/ -v` on every push to `main`. Tests pass with or without `generator.keras` — generation endpoints return 503 gracefully when the model is missing.
+GitHub Actions runs `pytest tests/ -v` on every push to `main`. Tests pass with or without `generator.onnx` — generation endpoints return 503 gracefully when the model is missing.
 
 ---
 
@@ -340,7 +374,10 @@ The default Adam momentum (0.9) causes training instability in GANs. High moment
 Without Dropout, the discriminator becomes too accurate too quickly. When it is near-perfect, the generator receives gradients close to zero — no useful signal about how to improve. Dropout(0.3) keeps the discriminator imperfect enough that the generator always has something to learn from.
 
 **Why train on Azure ML rather than locally**
-Training 100 epochs on 63,000 64×64 colour images takes 8–12 hours on CPU. Azure ML Compute Instance provides managed cloud compute with a GPU option that reduces training time to ~2 hours. The training infrastructure (Azure ML) is distinct from the inference infrastructure (Azure App Service) — the same separation used in production ML systems.
+Training 100 epochs on 63,000 64×64 colour images takes 8–12 hours on CPU. Azure ML Compute Instance provides managed cloud compute with a GPU option that reduces training time to ~2 hours. The training infrastructure (Azure ML) is distinct from the inference infrastructure (Hugging Face Spaces) — the same separation used in production ML systems.
+
+**Why ONNX Runtime for inference**
+The trained `.keras` checkpoint is exported to ONNX (`.onnx`) for serving. `onnxruntime` is ~10MB and imports in milliseconds; TensorFlow is ~500MB and takes 2–3 minutes of CPU on a cold start. For inference-only serving, there is no benefit to loading the full TensorFlow runtime — ONNX is the standard format for deploying trained models outside the framework used to train them.
 
 **Why the shutdown line is inside `if __name__ == '__main__':`**
 The shutdown only fires when `train.py` is run directly as a script (`python train.py`) on Azure ML — not when `train()` is imported by the notebook. This means the notebook training cell works safely on Colab, Kaggle, or local machines without risk of shutting down the host.
@@ -382,7 +419,7 @@ DCGAN is a foundational GAN architecture from 2015. It is well-understood and tr
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| tensorflow | >=2.15 | DCGAN training and inference |
+| onnxruntime | >=1.17 | Model inference (exported from trained Keras checkpoint) |
 | numpy | >=1.24,<2.0 | Array operations, image processing |
 | matplotlib | >=3.7 | Training visualisation in notebook |
 | pillow | >=10.0 | Image loading and grid assembly |
