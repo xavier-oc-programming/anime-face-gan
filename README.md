@@ -330,12 +330,13 @@ git remote add hf https://huggingface.co/spaces/xavier-oc-machinelearn/anime-fac
 git push hf main
 ```
 
-HF Spaces builds the Docker image automatically on push. The app starts in ~30 seconds with no CPU quota — unlike Azure App Service's free tier (F1), which enforces a 60 CPU-minute/day limit that TensorFlow-based cold starts exhaust quickly.
+HF Spaces builds the Docker image automatically on push. The app starts in ~30 seconds with no CPU quota.
 
 **Why Hugging Face Spaces over Azure App Service**
-Azure App Service (F1 free tier) was the initial target, matching the pattern used across other projects in this portfolio. However, the F1 tier enforces a 60 CPU-minute/day quota. TensorFlow's import overhead alone (~2–3 CPU minutes per cold start) exhausted the daily quota within a few app restarts, making the service unreliable. Switching inference to ONNX Runtime (`onnxruntime`, ~10MB vs TensorFlow's ~500MB) significantly reduced startup cost, but F1's shared CPU still made cold starts unpredictable.
+Azure App Service (F1 free tier) was the initial target, matching the pattern used across other projects in this portfolio. The F1 tier enforces a 60 CPU-minute/day quota, and this project's inference load profile (model load on every cold start) exhausted it quickly. HF Spaces was chosen for cost reasons — not unfamiliarity with Azure. All other projects in this portfolio run on Azure App Service without issue. HF Spaces runs the Docker container continuously with no daily CPU limit, which suits the workload.
 
-Hugging Face Spaces was chosen for cost reasons — not unfamiliarity with Azure. All other projects in this portfolio run on Azure App Service without issue; this project's inference load profile (cold starts with a model load on every restart) is a poor fit for a quota-based free tier. HF Spaces runs the Docker container continuously with no daily CPU limit, which suits the workload.
+**Why ONNX Runtime for inference**
+The trained `.keras` checkpoint is exported to ONNX and served via `onnxruntime`. This is standard practice for inference-only deployments — there is no benefit to loading the full TensorFlow training framework (~500MB) just to run a forward pass. `onnxruntime` is ~10MB, imports in milliseconds, and is the standard format for deploying models outside the framework they were trained in.
 
 **Local development:**
 
@@ -375,9 +376,6 @@ Without Dropout, the discriminator becomes too accurate too quickly. When it is 
 
 **Why train on Colab rather than locally**
 Training 100 epochs on 63,000 64×64 colour images takes 8–12 hours on CPU. Google Colab provides a free T4 GPU that reduces training time to ~2 hours with no setup. Azure ML Compute Instance is also documented (Option B) for cases where more control or longer runtimes are needed — the training infrastructure is intentionally separate from the inference infrastructure, which is the same separation used in production ML systems.
-
-**Why ONNX Runtime for inference**
-The trained `.keras` checkpoint is exported to ONNX (`.onnx`) for serving. `onnxruntime` is ~10MB and imports in milliseconds; TensorFlow is ~500MB and takes 2–3 minutes of CPU on a cold start. For inference-only serving, there is no benefit to loading the full TensorFlow runtime — ONNX is the standard format for deploying trained models outside the framework used to train them.
 
 **Why the shutdown line is inside `if __name__ == '__main__':`**
 The shutdown only fires when `train.py` is run directly as a script (`python train.py`) on Azure ML — not when `train()` is imported by the notebook. This means the notebook training cell works safely on Colab, Kaggle, or local machines without risk of shutting down the host.
