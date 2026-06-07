@@ -11,7 +11,7 @@ pinned: false
 
 Generates anime faces using a Deep Convolutional GAN trained on 63,000 images.
 Every face is generated from random noise — none of them exist. Trained on
-Azure ML Compute Instance. Inference served via FastAPI on Hugging Face Spaces.
+Google Colab T4 GPU. Inference served via FastAPI on Hugging Face Spaces.
 
 **Live demo → [xavier-oc-machinelearn-anime-face-gan.hf.space](https://xavier-oc-machinelearn-anime-face-gan.hf.space)**
 &nbsp;&nbsp;·&nbsp;&nbsp;
@@ -22,7 +22,7 @@ Azure ML Compute Instance. Inference served via FastAPI on Hugging Face Spaces.
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-blue)
 ![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-inference-lightgrey)
 ![Keras](https://img.shields.io/badge/Keras-DCGAN-red)
-![Azure ML](https://img.shields.io/badge/Azure_ML-training-0078D4)
+![Google Colab](https://img.shields.io/badge/Google_Colab-T4_GPU-F9AB00)
 ![Hugging Face Spaces](https://img.shields.io/badge/Hugging_Face-Spaces-FFD21E)
 
 ---
@@ -373,8 +373,8 @@ The default Adam momentum (0.9) causes training instability in GANs. High moment
 **Why Dropout in the discriminator**
 Without Dropout, the discriminator becomes too accurate too quickly. When it is near-perfect, the generator receives gradients close to zero — no useful signal about how to improve. Dropout(0.3) keeps the discriminator imperfect enough that the generator always has something to learn from.
 
-**Why train on Azure ML rather than locally**
-Training 100 epochs on 63,000 64×64 colour images takes 8–12 hours on CPU. Azure ML Compute Instance provides managed cloud compute with a GPU option that reduces training time to ~2 hours. The training infrastructure (Azure ML) is distinct from the inference infrastructure (Hugging Face Spaces) — the same separation used in production ML systems.
+**Why train on Colab rather than locally**
+Training 100 epochs on 63,000 64×64 colour images takes 8–12 hours on CPU. Google Colab provides a free T4 GPU that reduces training time to ~2 hours with no setup. Azure ML Compute Instance is also documented (Option B) for cases where more control or longer runtimes are needed — the training infrastructure is intentionally separate from the inference infrastructure, which is the same separation used in production ML systems.
 
 **Why ONNX Runtime for inference**
 The trained `.keras` checkpoint is exported to ONNX (`.onnx`) for serving. `onnxruntime` is ~10MB and imports in milliseconds; TensorFlow is ~500MB and takes 2–3 minutes of CPU on a cold start. For inference-only serving, there is no benefit to loading the full TensorFlow runtime — ONNX is the standard format for deploying trained models outside the framework used to train them.
